@@ -1,9 +1,11 @@
-import os
-
+import logging
 import cv2
 from ultralytics import YOLO
 
 from utils import handle_error
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 def parse_detection_file(result_path):
@@ -18,25 +20,20 @@ def parse_detection_file(result_path):
             parts = line.strip().split(',')
             if len(parts) == 6:
                 class_id, score, x1, y1, x2, y2 = map(float, parts)
-                if class_id == 7.0:
+                if int(class_id) == 7:
                     base_coords = (x1, y1, x2, y2)
                 detections.append((x1, y1, x2, y2))
 
         return base_coords, detections
     except Exception as e:
-        print(f"Error: {e}")
+        logging.error(f"Error: {e}")
         handle_error()
 
 
 def calculate_average_location_and_deltas(detections, base_coords):
     try:
         if not detections or base_coords is None:
-            return None, None, None, None, None, None, None
-
-        avg_coords = [((x1 + x2) / 2, (y1 + y2) / 2) for x1, y1, x2, y2 in detections]
-
-        total_avg_x = sum(coord[0] for coord in avg_coords) / len(avg_coords)
-        total_avg_y = sum(coord[1] for coord in avg_coords) / len(avg_coords)
+            return
 
         x1_values = [coords[0] for coords in detections]
         x2_values = [coords[2] for coords in detections]
@@ -52,9 +49,9 @@ def calculate_average_location_and_deltas(detections, base_coords):
                            (base_coords[0] == delta_x1 or base_coords[2] == delta_x2 or
                             base_coords[1] == delta_y1 or base_coords[3] == delta_y2))
 
-        return total_avg_x, total_avg_y, delta_x1, delta_x2, delta_y1, delta_y2, is_base_on_edge
+        return delta_x1, delta_x2, delta_y1, delta_y2, is_base_on_edge
     except Exception as e:
-        print(f"Error: {e}")
+        logging.error(f"Error: {e}")
         handle_error()
 
 
@@ -76,7 +73,7 @@ def save_detection_results(screen_path, results):
 
         return result_path, image
     except Exception as e:
-        print(f"Error: {e}")
+        logging.error(f"Error: {e}")
         handle_error()
 
 
@@ -85,7 +82,7 @@ def draw_encompassing_rectangle(image, deltas):
         delta_x1, delta_x2, delta_y1, delta_y2 = deltas
         cv2.rectangle(image, (int(delta_x1), int(delta_y1)), (int(delta_x2), int(delta_y2)), (255, 0, 0), 4)
     except Exception as e:
-        print(f"Error: {e}")
+        logging.error(f"Error: {e}")
         handle_error()
 
 
@@ -95,27 +92,26 @@ def is_worth_based_on_defences(screen_path):
         if image is None:
             raise FileNotFoundError(f"Image not found at {screen_path}")
 
-        model_path = os.path.join('C:\\', 'Users', 'macie', 'PycharmProjects', 'GalaxyLifeBot', 'src', 'runs', 'detect',
-                                  'train104', 'weights', 'best.pt')
+        model_path = "../runs/detect/train104/weights/best.pt"
         model = YOLO(model_path)
 
         results = model(image)[0]
         result_path, image = save_detection_results(screen_path, results)
 
         base_coords, detections = parse_detection_file(result_path)
-        total_avg_x, total_avg_y, delta_x1, delta_x2, delta_y1, delta_y2, is_base_on_edge = calculate_average_location_and_deltas(
+        delta_x1, delta_x2, delta_y1, delta_y2, is_base_on_edge = calculate_average_location_and_deltas(
             detections, base_coords)
 
-        if total_avg_x is not None and total_avg_y is not None:
+        if delta_x1 is not None and delta_x2 is not None and delta_y1 is not None and delta_y2 is not None:
             draw_encompassing_rectangle(image, (delta_x1, delta_x2, delta_y1, delta_y2))
             cv2.imwrite(f"{screen_path}_detections.png", image)
         else:
-            print("No valid boxes found to calculate average location and deltas.")
+            logging.error("No valid boxes found to calculate average location and deltas.")
             return False
 
         result = is_base_on_edge or len(results.boxes.data) < 6
-        print(f"Is worth attacking based on defences: {result}")
+        logging.info(f"Is worth attacking based on defences: {result}")
         return result
     except Exception as e:
-        print(f"Error: {e}")
+        logging.error(f"Error: {e}")
         handle_error()

@@ -1,6 +1,6 @@
-path: C:\Users\macie\PycharmProjects\GalaxyLifeBot
-train: C:\Users\macie\PycharmProjects\GalaxyLifeBot\src\training\
-val: C:\Users\macie\PycharmProjects\GalaxyLifeBot\src\training\
+path: ../
+train: training/
+val: training/
 
 names:
     0: None
