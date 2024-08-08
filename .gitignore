@@ -1,0 +1,7 @@
+.idea/dbnavigator.xml
+.idea/discord.xml
+.idea/misc.xml
+.idea/*
+/screenshots/
+src/macro/__pycache__/
+training.cache
