@@ -119,6 +119,7 @@ def calculate_detections_deltas(detections, base_coords):
         deltas (tuple): The delta values for the rectangle corners #TODO tuple of 4 floats
         is_base_on_edge (bool): True if the base is on the edge
     """
+    # TODO: decide whether delta should be for all detections or just these with score > 0.33
     try:
         if not detections or base_coords is None:
             return
@@ -177,7 +178,6 @@ def save_detection_results(screen_path, results):
         raise e
 
 
-# TODO: may not work correctly due to changes in deltas var???
 def draw_encompassing_rectangle(image, deltas):
     """
     Draws an encompassing rectangle on the image based on delta values.
