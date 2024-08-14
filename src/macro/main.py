@@ -31,6 +31,8 @@ CHOOSE_LOOTER_UNIT_WHEN_ATTACKING_BUTTON = (950, 1375)
 CLOSE_NEWS_POPUP_BUTTON = (1583, 204)
 CLOSE_DAILY_GIFT_POPUP_BUTTON = (1590, 530)
 
+global init_time
+
 
 def click_and_wait(button, time_to_wait):
     """
@@ -193,7 +195,6 @@ def draw_encompassing_rectangle(image, deltas):
         raise e
 
 
-# TODO: may not work correctly due to changes in deltas var???
 def is_worth_based_on_defences(screen_path):
     """
     Determines if a base is worth attacking based on defences recognized by model.
@@ -371,7 +372,7 @@ def get_screenshot(window_title):
 
 def process_screenshot():
     """
-    Processes a screenshot to extract gold and mineral values.
+    Processes a screenshot to extract gold and mineral values. Saves bot's uptime to a file.
 
     Returns:
     list: A list containing gold value, mineral value, and the path to the saved screenshot #TODO: float, float, str
@@ -381,7 +382,17 @@ def process_screenshot():
         screenshot = get_screenshot(window_title)
 
         if screenshot:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            now = datetime.now()
+            uptime = now - init_time
+            logging.info(f"Uptime: {uptime}")
+
+            # TODO zrob plik txt z timestampem - wpisuj do niego wartosci mineralow golda uptime (ilosc atakow / skipow)
+            # TODO
+            # TODO
+            # TODO
+            # TODO
+            # TODO
+            timestamp = now.strftime("%Y%m%d_%H%M%S")
             screen_path = f"../../screenshots/screen{timestamp}.png"
             screenshot.save(screen_path)
 
@@ -474,4 +485,5 @@ def main_loop():
 
 if __name__ == '__main__':
     get_screenshot("Galaxy Life")  # used just to take focus on window
+    init_time = datetime.now()
     main_loop()
