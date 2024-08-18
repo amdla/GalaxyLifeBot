@@ -6,10 +6,9 @@ from datetime import datetime
 import cv2
 import easyocr
 import numpy as np
-import openpyxl
 import pyautogui
 import torch
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from pygetwindow import getWindowsWithTitle
 from ultralytics import YOLO
 
@@ -46,7 +45,7 @@ def init_excel_logging():
 
     filename = "bot_logs.xlsx"
     if os.path.exists(filename):
-        workbook = openpyxl.load_workbook(filename)
+        workbook = load_workbook(filename)
         sheet = workbook.active
     else:
         workbook = Workbook()
@@ -67,7 +66,9 @@ def log_to_excel(gold_value, mineral_value, is_worth, uptime):
 
     new_row = [gold_value, mineral_value, is_worth, str(uptime)]
     sheet.append(new_row)
-    workbook.save("bot_logs.xlsx")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_name = f"{timestamp}-log.xlsx"
+    workbook.save(file_name)
 
 
 def click_and_wait(button, time_to_wait):
