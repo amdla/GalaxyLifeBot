@@ -1,12 +1,15 @@
 import logging
+import os
 import time
 from datetime import datetime
 
 import cv2
 import easyocr
 import numpy as np
+import openpyxl
 import pyautogui
 import torch
+from openpyxl import Workbook
 from pygetwindow import getWindowsWithTitle
 from ultralytics import YOLO
 
@@ -32,6 +35,39 @@ CLOSE_NEWS_POPUP_BUTTON = (1583, 204)
 CLOSE_DAILY_GIFT_POPUP_BUTTON = (1590, 530)
 
 global init_time
+global workbook, sheet
+
+
+def init_excel_logging():
+    """
+    Initializes the Excel workbook for logging.
+    """
+    global workbook, sheet
+
+    filename = "bot_logs.xlsx"
+    if os.path.exists(filename):
+        workbook = openpyxl.load_workbook(filename)
+        sheet = workbook.active
+    else:
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = "Bot Logs"
+        headers = ["Timestamp", "Gold Value", "Mineral Value", "Is Worth Attacking", "Uptime"]
+        for col, header in enumerate(headers, start=1):
+            sheet.cell(row=1, column=col, value=header)
+
+    workbook.save(filename)
+
+
+def log_to_excel(gold_value, mineral_value, is_worth, uptime):
+    """
+    Logs data to the Excel spreadsheet.
+    """
+    global workbook, sheet
+
+    new_row = [gold_value, mineral_value, is_worth, str(uptime)]
+    sheet.append(new_row)
+    workbook.save("bot_logs.xlsx")
 
 
 def click_and_wait(button, time_to_wait):
@@ -245,6 +281,10 @@ def is_worth_attacking(values_list):
         logging.info(f"Is worth attacking based on resources: {int(mineral_value) > 800000}")
         logging.info(f"Is worth attacking: {result}")
         logging.info("---------------------------ended calculating, proceeds to next enemy---------------------------")
+
+        sheet.cell(row=sheet.max_row, column=4, value=str(result))
+        workbook.save("bot_logs.xlsx")
+
         return result
     except Exception as e:
         raise e
@@ -386,12 +426,6 @@ def process_screenshot():
             uptime = now - init_time
             logging.info(f"Uptime: {uptime}")
 
-            # TODO zrob plik txt z timestampem - wpisuj do niego wartosci mineralow golda uptime (ilosc atakow / skipow)
-            # TODO
-            # TODO
-            # TODO
-            # TODO
-            # TODO
             timestamp = now.strftime("%Y%m%d_%H%M%S")
             screen_path = f"../../screenshots/screen{timestamp}.png"
             screenshot.save(screen_path)
@@ -400,6 +434,9 @@ def process_screenshot():
 
             logging.info(f"Gold Value: {gold_value}")
             logging.info(f"Mineral Value: {mineral_value}")
+
+            log_to_excel(gold_value, mineral_value, "", str(uptime))
+
             return [gold_value, mineral_value, screen_path]
 
     except Exception as e:
@@ -463,6 +500,7 @@ def main_loop():
     The main game loop that manages the overall flow of searching for enemies and attacking.
     """
     iterations = 0
+    init_excel_logging()
     while True:
         try:
             search_for_enemy()
