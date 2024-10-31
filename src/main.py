@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 
 from game_actions import search_for_enemy, attack, add_troops_to_training
-from image_processing import process_screenshot, is_worth_attacking
+from image_processing import process_screenshot, is_worth_attacking, get_gold_and_minerals, ATTACK_WINDOW_DATA
 from utils import clear_screenshots_directory, get_screenshot, click_and_wait, handle_error, ExcelLogger, \
     SEARCH_AGAIN_BUTTON
 
@@ -28,7 +28,11 @@ def main_loop():
 
                 if is_worth_attacking(gold_value, mineral_value, screen_path):
                     excel_logger.log_to_excel(gold_value, mineral_value, True, uptime)
-                    attack()
+                    end_battle_screenshot = attack()
+                    loot_gold_value, loot_mineral_value = get_gold_and_minerals(end_battle_screenshot,
+                                                                                ATTACK_WINDOW_DATA)
+
+                    logging.info(f"Results of attack {loot_gold_value} gold and {loot_mineral_value} minerals")
                     add_troops_to_training()
                     break
                 else:
@@ -50,4 +54,4 @@ if __name__ == '__main__':
     get_screenshot("Galaxy Life")  # take focus on window
     main_loop()
 
-# TODO: log error reading resources
+# TODO: screenshot after ending battle, read gathered resources, log to excel, calculate % efficiency

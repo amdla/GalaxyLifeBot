@@ -10,6 +10,9 @@ import torch
 from pygetwindow import getWindowsWithTitle
 from ultralytics import YOLO
 
+SCAN_WINDOW_DATA = [985, 100, 65, 50]
+ATTACK_WINDOW_DATA = [985, 100, 65, 50]
+
 
 def save_detection_results(screen_path, results):
     """
@@ -44,35 +47,47 @@ def save_detection_results(screen_path, results):
         raise e
 
 
-def parse_detection_file(result_path):
+def is_worth_based_on_defences(screen_path):
     """
-    Parses a detection file to extract base coordinates and detections.
+    Determines if a base is worth attacking based on defenses recognized by model.
 
     Params:
-        result_path (str): The path to the detection results file.
-    # TODO: handle None for base_coords!!!!
+        screen_path (str): Path to the screenshot image
+
     Returns:
-        A tuple (base_coords, detections) containing:
-        - base_coords (tuple of 4 floats | None): Coordinates of the base, or None if not found.
-        - detections (list): A list of tuples (each consisting of 4 floats) detection coordinates.
+        bool: True if the base is located on the edge of all defensive buildings or amount of defensive
+            buildings is smaller than <defensive_buildings_amount_threshold> (we assume that the base is not protected
+            well then), False otherwise
     """
-
+    defensive_buildings_amount_threshold = 5
     try:
-        with open(result_path, 'r') as file:
-            lines = file.readlines()
+        image = cv2.imread(screen_path)
+        if image is None:
+            raise FileNotFoundError(f"Image not found at {screen_path}")
 
-        base_coords = None
-        detections = []
+        model = YOLO("../model/train104/weights/best.pt")
+        results = model(image)[0]
 
-        for line in lines:
-            parts = line.strip().split(',')
-            if len(parts) == 6:
-                class_id, score, x1, y1, x2, y2 = map(float, parts)
-                if int(class_id) == 7:
-                    base_coords = (x1, y1, x2, y2)
-                detections.append((x1, y1, x2, y2))
+        # Parse detection results directly
+        base_coords, detections = None, []
+        for line in results:
+            class_id, score, x1, y1, x2, y2 = map(float, line.strip().split(','))
+            if int(class_id) == 7:
+                base_coords = (x1, y1, x2, y2)
+            detections.append((x1, y1, x2, y2))
 
-        return base_coords, detections
+        if not base_coords:
+            is_base_on_edge = False  # we can assume that the base is hid by other buildings -> probably protected
+        else:
+            # Calculate and draw if detections are valid
+            deltas, is_base_on_edge = calculate_detections_deltas(detections, base_coords)
+            if deltas:
+                draw_encompassing_rectangle(image, tuple(deltas))
+                cv2.imwrite(f"{screen_path}_detections.png", image)
+
+        # Worth attacking if base is on edge or defensive buildings amount is smaller than threshold
+        return len(results.boxes.data) < defensive_buildings_amount_threshold or is_base_on_edge
+
     except Exception as e:
         raise e
 
@@ -136,12 +151,17 @@ def read_resource_values(region_of_interest, reader):
         raise e
 
 
-def get_gold_and_minerals(screenshot):
+def get_gold_and_minerals(screenshot, window_data):
     """
     Extracts gold and mineral values from a screenshot.
 
     Params:
         screenshot: The screenshot image
+        window_data (tuple): A tuple containing the window data consisting of:
+            x (int): X-coordinate of the top-left corner
+            y (int): Y-coordinate of the top-left corner
+            width (int): Width of the region
+            height (int): Height of the region
 
     Returns:
         tuple(gold_value, mineral_value) containing:
@@ -150,7 +170,7 @@ def get_gold_and_minerals(screenshot):
     """
     try:
         screenshot_np = np.array(screenshot.convert('L'))
-        region_of_interest = extract_region_of_interest(screenshot_np, 985, 100, 65, 50)
+        region_of_interest = extract_region_of_interest(screenshot_np, window_data)
 
         with torch.no_grad():
             reader = easyocr.Reader(['en'], gpu=torch.cuda.is_available())
@@ -164,22 +184,23 @@ def get_gold_and_minerals(screenshot):
         raise e
 
 
-def extract_region_of_interest(image, x, y, width, height):
+def extract_region_of_interest(image, window_data):
     """
     Extracts a region of interest from an image.
 
     Params:
         image: The source image
-        x (int): X-coordinate of the top-left corner
-        y (int): Y-coordinate of the top-left corner
-        width (int): Width of the region
-        height (int): Height of the region
+        window_data (tuple): A tuple containing the window data consisting of:
+            x (int): X-coordinate of the top-left corner
+            y (int): Y-coordinate of the top-left corner
+            width (int): Width of the region
+            height (int): Height of the region
 
     Returns:
         numpy.ndarray: The extracted region of interest
     """
     try:
-        return image[y:y + height, x:x + width]
+        return image[window_data[1]:window_data[1] + window_data[3], window_data[0]:window_data[0] + window_data[2]]
     except Exception as e:
         raise e
 
@@ -247,7 +268,7 @@ def process_screenshot(init_time):
             screen_path = f"../logs/screenshots/{timestamp}.png"
             screenshot.save(screen_path)
 
-            gold_value, mineral_value = get_gold_and_minerals(screenshot)
+            gold_value, mineral_value = get_gold_and_minerals(screenshot, SCAN_WINDOW_DATA)
 
             logging.info(f"Gold Value: {gold_value}")
             logging.info(f"Mineral Value: {mineral_value}")
@@ -278,47 +299,6 @@ def is_worth_attacking(gold_value, mineral_value, screen_path):
         logging.info(f"Is worth attacking: {result}")
         logging.info("---------------------------ended calculating, proceeds to next enemy---------------------------")
 
-        return result
-    except Exception as e:
-        raise e
-
-
-def is_worth_based_on_defences(screen_path):
-    """
-    Determines if a base is worth attacking based on defences recognized by model.
-
-    Params:
-        screen_path (str): Path to the screenshot image
-
-    Returns:
-        bool: True if the base is worth attacking, False otherwise
-    """
-    try:
-        image = cv2.imread(screen_path)
-        if image is None:
-            raise FileNotFoundError(f"Image not found at {screen_path}")
-        model_path = "../model/train104/weights/best.pt"
-        model = YOLO(model_path)
-        results = model(image)[0]
-        result_path, image = save_detection_results(screen_path, results)
-
-        base_coords, detections = parse_detection_file(result_path)
-        if base_coords is not None:
-
-            deltas, is_base_on_edge = calculate_detections_deltas(detections, base_coords)
-            if deltas:
-                draw_encompassing_rectangle(image, tuple(deltas))
-                cv2.imwrite(f"{screen_path}_detections.png", image)
-            else:
-                logging.error("No valid boxes found to calculate average location and deltas.")
-                return True
-        else:
-            logging.error("Base not found in detections.")
-            is_base_on_edge = False
-
-        # worth attacking when base is on edge or there are less than 2 defensive buildings
-        result = len(results.boxes.data) < 5 or is_base_on_edge
-        logging.info(f"Is worth attacking based on defences: {result}")
         return result
     except Exception as e:
         raise e

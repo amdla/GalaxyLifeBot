@@ -1,7 +1,7 @@
 from utils import ATTACK_BUTTON, FIND_TARGET_BUTTON, FIGHT_NOW_BUTTON, SPEED_UP_X2_BUTTON, END_BATTLE_BUTTON, \
     GO_HOME_BUTTON, TRAINING_CAMP_1_BUTTON, TRAINING_CAMP_2_BUTTON, ADD_LOOTERS_TO_TRAINING_LIST_BUTTON, \
     CHOOSE_LOOTER_UNIT_WHEN_ATTACKING_BUTTON, CLOSE_TRAINING_VIEW_BUTTON
-from utils import click_and_wait
+from utils import click_and_wait, get_screenshot
 
 
 def search_for_enemy():
@@ -27,7 +27,9 @@ def attack():
         click_and_wait(SPEED_UP_X2_BUTTON, 0)
         click_and_wait(SPEED_UP_X2_BUTTON, 50)  # Wait for the battle to end (x4 speed)
         click_and_wait(END_BATTLE_BUTTON, 5)
+        end_battle_screenshot = get_screenshot("Galaxy Life")
         click_and_wait(GO_HOME_BUTTON, 10)
+        return end_battle_screenshot
 
     except Exception as e:
         raise e
