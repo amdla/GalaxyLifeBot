@@ -301,17 +301,23 @@ def is_worth_based_on_defences(screen_path):
         model = YOLO(model_path)
         results = model(image)[0]
         result_path, image = save_detection_results(screen_path, results)
+
         base_coords, detections = parse_detection_file(result_path)
-        deltas, is_base_on_edge = calculate_detections_deltas(detections, base_coords)
-        if deltas:
-            draw_encompassing_rectangle(image, tuple(deltas))
-            cv2.imwrite(f"{screen_path}_detections.png", image)
+        if base_coords is not None:
+
+            deltas, is_base_on_edge = calculate_detections_deltas(detections, base_coords)
+            if deltas:
+                draw_encompassing_rectangle(image, tuple(deltas))
+                cv2.imwrite(f"{screen_path}_detections.png", image)
+            else:
+                logging.error("No valid boxes found to calculate average location and deltas.")
+                return True
         else:
-            logging.error("No valid boxes found to calculate average location and deltas.")
-            return False
+            logging.error("Base not found in detections.")
+            is_base_on_edge = False
 
         # worth attacking when base is on edge or there are less than 2 defensive buildings
-        result = len(results.boxes.data) < 3 or is_base_on_edge
+        result = len(results.boxes.data) < 5 or is_base_on_edge
         logging.info(f"Is worth attacking based on defences: {result}")
         return result
     except Exception as e:

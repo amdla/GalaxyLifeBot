@@ -81,7 +81,7 @@ def handle_error():
     pyautogui.keyDown('F5')
     time.sleep(0.2)
     pyautogui.keyUp('F5')
-    time.sleep(9)
+    time.sleep(12)
     click_and_wait(CLOSE_NEWS_POPUP_BUTTON, 3)
     click_and_wait(CLOSE_DAILY_GIFT_POPUP_BUTTON, 2)
 
