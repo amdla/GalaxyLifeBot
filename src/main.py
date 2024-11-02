@@ -55,5 +55,4 @@ if __name__ == '__main__':
     get_screenshot("Galaxy Life")  # take focus on window
     main_loop()
 
-# TODO: adjust ROI after battle,
-# TODO: adjust comments
+# TODO: adjust ROI after battle, screen size blah blah

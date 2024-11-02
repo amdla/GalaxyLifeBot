@@ -125,8 +125,31 @@ class ExcelLogger:
             mineral_value (str): The mineral value
             is_worth (bool): True if the base is worth attacking, False otherwise
             uptime (timedelta): The bot's uptime
+            loot_gold_value (str): Amount of looted gold
+            loot_mineral_value (str): Amount of looted minerals
         """
         new_row = [gold_value, mineral_value, is_worth, uptime, loot_gold_value, loot_mineral_value]
         self.sheet.append(new_row)
         self.workbook.save(self.filename)
+
+
+# TODO: list below
+"""
 # TODO: calculate efficiency?
+as for efficiencies, i want them to be stored in new columns within our log table
+mineral_efficiency = loot_mineral_value / mineral_value
+gold_efficiency = loot_gold_value / gold_value
+total_efficiency = (loot_mineral_value+loot_gold_value)/(mineral_value+gold_value)
+at some point (maybe when starting the logger, we should save values assigned to threshholds for:
+defensive_buildings, gold and mineral value (like the one that we use to decide if attack is worth it)
+i want it to be printed over and over again for each entry in a separate column
+-------------------
+i want to add some kind of total logging that will be used to calculate stats for entire project
+i want to keep logging stuff for each run separately, but i also want them to be logged to a one bigger logging
+file (we will append new entries there)
+like yk log1.xlsx log2.xlsx log3.xlsx for each run and all_logs.xlsx for file containing all the runs together
+remember about new columns (especially the efficiency ones) and the fact that we have naming convention already
+-------------------
+i want all the logging to console be logged to some file, let's say logs.txt; new logs are gonna be appended to the file
+####gotta fix it -> logs are cleared every time
+"""

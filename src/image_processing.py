@@ -55,7 +55,7 @@ def is_worth_based_on_defences(screen_path):
         screen_path (str): Path to the screenshot image
 
     Returns:
-        bool: True if the base is located on the edge of all defensive buildings or amount of defensive
+        bool: True if the base is located on the edge of all defensive buildings OR amount of defensive
             buildings is smaller than <defensive_buildings_amount_threshold> (we assume that the base is not protected
             well then), False otherwise
     """
@@ -105,8 +105,8 @@ def calculate_detections_deltas(detections, base_coords):
         - deltas (tuple of 4 floats): The delta values for the rectangle corners
         - is_base_on_edge (bool): True if the base is on the edge
     """
-    # TODO: decide whether delta should be for all detections or just these with score > 0.33 (its for all now probably)
-    # updated 0.33 to 0.2
+    # TODO: decide whether delta should be for all detections or just these with score > 0.2 (its for all now probably)
+
     try:
         if not detections or base_coords is None:
             return
@@ -158,15 +158,15 @@ def get_gold_and_minerals(screenshot, window_data):
     Params:
         screenshot: The screenshot image
         window_data (tuple): A tuple containing the window data consisting of:
-            x (int): X-coordinate of the top-left corner
-            y (int): Y-coordinate of the top-left corner
-            width (int): Width of the region
-            height (int): Height of the region
+        - x (int): X-coordinate of the top-left corner
+        - y (int): Y-coordinate of the top-left corner
+        - width (int): Width of the region
+        - height (int): Height of the region
 
     Returns:
         tuple(gold_value, mineral_value) containing:
-        - gold_value (str): The extracted gold value
-        - mineral_value (str): The extracted mineral value
+            gold_value (str): The extracted gold value
+            mineral_value (str): The extracted mineral value
     """
     try:
         screenshot_np = np.array(screenshot.convert('L'))
@@ -191,10 +191,10 @@ def extract_region_of_interest(image, window_data):
     Params:
         image: The source image
         window_data (tuple): A tuple containing the window data consisting of:
-            x (int): X-coordinate of the top-left corner
-            y (int): Y-coordinate of the top-left corner
-            width (int): Width of the region
-            height (int): Height of the region
+        - x (int): X-coordinate of the top-left corner
+        - y (int): Y-coordinate of the top-left corner
+        - width (int): Width of the region
+        - height (int): Height of the region
 
     Returns:
         numpy.ndarray: The extracted region of interest
@@ -250,6 +250,9 @@ def process_screenshot(init_time):
     """
     Processes a screenshot to extract gold and mineral values. Saves bot's uptime to a file.
 
+    Params:
+        init_time (TODO)
+
     Returns:
         gold_value (str): gold value
         mineral_value (str): mineral value
@@ -282,7 +285,8 @@ def process_screenshot(init_time):
 
 def is_worth_attacking(gold_value, mineral_value, screen_path):
     """
-    Determines if a base is worth attacking based on resources and defences.
+    Determines if a base is worth attacking based on resources and defences. Thresholds for mineral and gold values
+    making the function return true are set as <gold_value_threshold> and <mineral_value_threshold>
 
     Params:
         gold_value (str): gold value
@@ -292,9 +296,11 @@ def is_worth_attacking(gold_value, mineral_value, screen_path):
     Returns:
         bool: True if the base is worth attacking based on current settings, False otherwise
     """
+    gold_value_threshold = 0
+    mineral_value_threshold = 0
 
     try:
-        logging.info(f"Is worth attacking based on resources: {int(mineral_value) > 800000}")
+        logging.info(f"Is worth attacking based on resources: {int(mineral_value) > mineral_value_threshold}")
         result = is_worth_based_on_defences(screen_path)  # and int(mineral_value) > 800000
         logging.info(f"Is worth attacking: {result}")
         logging.info("---------------------------ended calculating, proceeds to next enemy---------------------------")

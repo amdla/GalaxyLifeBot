@@ -20,6 +20,9 @@ def search_for_enemy():
 def attack():
     """
     Performs an attack sequence including troop deployment and battle management.
+
+    Returns:
+        end_battle_screenshot (Image): screenshot of the end battle screen containing data about the loot
     """
 
     try:
