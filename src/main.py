@@ -27,16 +27,17 @@ def main_loop():
                 gold_value, mineral_value, screen_path, uptime = process_screenshot(init_time)
 
                 if is_worth_attacking(gold_value, mineral_value, screen_path):
-                    excel_logger.log_to_excel(gold_value, mineral_value, True, uptime)
                     end_battle_screenshot = attack()
                     loot_gold_value, loot_mineral_value = get_gold_and_minerals(end_battle_screenshot,
                                                                                 ATTACK_WINDOW_DATA)
 
+                    excel_logger.log_to_excel(gold_value, mineral_value, True, uptime, loot_gold_value,
+                                              loot_mineral_value)
                     logging.info(f"Results of attack {loot_gold_value} gold and {loot_mineral_value} minerals")
                     add_troops_to_training()
                     break
                 else:
-                    excel_logger.log_to_excel(gold_value, mineral_value, False, uptime)
+                    excel_logger.log_to_excel(gold_value, mineral_value, False, uptime, 0, 0)
                     click_and_wait(SEARCH_AGAIN_BUTTON, 8)
 
         except Exception as e:
@@ -54,4 +55,5 @@ if __name__ == '__main__':
     get_screenshot("Galaxy Life")  # take focus on window
     main_loop()
 
-# TODO: screenshot after ending battle, read gathered resources, log to excel, calculate % efficiency
+# TODO: adjust ROI after battle,
+# TODO: adjust comments

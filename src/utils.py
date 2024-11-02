@@ -109,13 +109,14 @@ class ExcelLogger:
         else:
             self.workbook = Workbook()
             self.sheet = self.workbook.active
-            headers = ["Gold Value", "Mineral Value", "Is Worth Attacking", "Uptime"]
+            headers = ["Gold Value", "Mineral Value", "Is Worth Attacking", "Uptime", "Looted Gold", "Looted Minerals",
+                       "Gold efficiency", "Mineral efficiency"]
             for col, header in enumerate(headers, start=1):
                 self.sheet.cell(row=1, column=col, value=header)
 
         self.workbook.save(self.filename)
 
-    def log_to_excel(self, gold_value, mineral_value, is_worth, uptime):
+    def log_to_excel(self, gold_value, mineral_value, is_worth, uptime, loot_gold_value, loot_mineral_value):
         """
         Logs data to the Excel spreadsheet.
 
@@ -125,6 +126,7 @@ class ExcelLogger:
             is_worth (bool): True if the base is worth attacking, False otherwise
             uptime (timedelta): The bot's uptime
         """
-        new_row = [gold_value, mineral_value, is_worth, uptime]
+        new_row = [gold_value, mineral_value, is_worth, uptime, loot_gold_value, loot_mineral_value]
         self.sheet.append(new_row)
         self.workbook.save(self.filename)
+# TODO: calculate efficiency?
