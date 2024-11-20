@@ -31,6 +31,7 @@ def attack():
         click_and_wait(SPEED_UP_X2_BUTTON, 50)  # Wait for the battle to end (x4 speed)
         click_and_wait(END_BATTLE_BUTTON, 5)
         end_battle_screenshot = get_screenshot("Galaxy Life")
+
         click_and_wait(GO_HOME_BUTTON, 10)
         return end_battle_screenshot
 

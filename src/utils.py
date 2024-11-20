@@ -19,7 +19,7 @@ def clear_screenshots_directory():
     if os.path.exists(directory):
         shutil.rmtree(directory)
         os.makedirs(directory)
-        with open(os.path.join(directory, '.gitkeep'), 'w') as f:
+        with open(os.path.join(directory, '.gitkeep'), 'w'):
             pass
 
         logging.info(f"Directory '{directory}' has been cleared.")
@@ -81,7 +81,7 @@ def handle_error():
     pyautogui.keyDown('F5')
     time.sleep(0.2)
     pyautogui.keyUp('F5')
-    time.sleep(12)
+    time.sleep(15)
     click_and_wait(CLOSE_NEWS_POPUP_BUTTON, 3)
     click_and_wait(CLOSE_DAILY_GIFT_POPUP_BUTTON, 2)
 

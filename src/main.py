@@ -21,6 +21,7 @@ def main_loop():
         try:
             search_for_enemy()
             while True:
+                logging.info("---------------------------------------new enemy---------------------------------------")
                 iterations += 1
                 if iterations % 50 == 0:
                     raise Exception("Restarting the game after 50 iterations to avoid getting stuck.")
@@ -34,6 +35,7 @@ def main_loop():
                     excel_logger.log_to_excel(gold_value, mineral_value, True, uptime, loot_gold_value,
                                               loot_mineral_value)
                     logging.info(f"Results of attack {loot_gold_value} gold and {loot_mineral_value} minerals")
+
                     add_troops_to_training()
                     break
                 else:
@@ -54,5 +56,3 @@ if __name__ == '__main__':
     clear_screenshots_directory()
     get_screenshot("Galaxy Life")  # take focus on window
     main_loop()
-
-# TODO: adjust ROI after battle, screen size blah blah

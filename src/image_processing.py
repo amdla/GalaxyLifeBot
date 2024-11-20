@@ -11,7 +11,7 @@ from pygetwindow import getWindowsWithTitle
 from ultralytics import YOLO
 
 SCAN_WINDOW_DATA = [985, 100, 65, 50]
-ATTACK_WINDOW_DATA = [985, 100, 65, 50]
+ATTACK_WINDOW_DATA = [1000, 855, 280, 45]
 
 
 def save_detection_results(screen_path, results):
@@ -65,29 +65,62 @@ def is_worth_based_on_defences(screen_path):
         if image is None:
             raise FileNotFoundError(f"Image not found at {screen_path}")
 
-        model = YOLO("../model/train104/weights/best.pt")
-        results = model(image)[0]
+        model_path = "../model/train104/weights/best.pt"
 
-        # Parse detection results directly
-        base_coords, detections = None, []
-        for line in results:
-            class_id, score, x1, y1, x2, y2 = map(float, line.strip().split(','))
-            if int(class_id) == 7:
-                base_coords = (x1, y1, x2, y2)
-            detections.append((x1, y1, x2, y2))
+        results = YOLO(model_path)(image)[0]
+        result_path, image = save_detection_results(screen_path, results)
 
-        if not base_coords:
-            is_base_on_edge = False  # we can assume that the base is hid by other buildings -> probably protected
-        else:
-            # Calculate and draw if detections are valid
+        base_coords, detections = parse_detection_file(result_path)
+        if base_coords is not None:
+
             deltas, is_base_on_edge = calculate_detections_deltas(detections, base_coords)
             if deltas:
                 draw_encompassing_rectangle(image, tuple(deltas))
                 cv2.imwrite(f"{screen_path}_detections.png", image)
+            else:
+                logging.error("No valid boxes found to calculate average location and deltas.")
+                return True
+        else:
+            logging.error("Base not found in detections.")
+            is_base_on_edge = False
 
-        # Worth attacking if base is on edge or defensive buildings amount is smaller than threshold
-        return len(results.boxes.data) < defensive_buildings_amount_threshold or is_base_on_edge
+        # Worth attacking if base is on edge or defensive buildings amount is smaller than set threshold
+        result = len(results.boxes.data) < defensive_buildings_amount_threshold or is_base_on_edge
+        logging.info(f"Is worth attacking based on defences: {result}")
+        return result
+    except Exception as e:
+        raise e
 
+
+def parse_detection_file(result_path):
+    """
+    Parses a detection file to extract base coordinates and detections.
+
+    Params:
+        result_path (str): The path to the detection results file.
+
+    Returns:
+        A tuple (base_coords, detections) containing:
+        - base_coords (tuple of 4 floats | None): Coordinates of the base, or None if not found.
+        - detections (list): A list of tuples (each consisting of 4 floats) detection coordinates.
+    """
+
+    try:
+        with open(result_path, 'r') as file:
+            lines = file.readlines()
+
+        base_coords = None
+        detections = []
+
+        for line in lines:
+            parts = line.strip().split(',')
+            if len(parts) == 6:
+                class_id, score, x1, y1, x2, y2 = map(float, parts)
+                if int(class_id) == 7:
+                    base_coords = (x1, y1, x2, y2)
+                detections.append((x1, y1, x2, y2))
+
+        return base_coords, detections
     except Exception as e:
         raise e
 
@@ -127,6 +160,8 @@ def calculate_detections_deltas(detections, base_coords):
                            (base_coords[0] == deltas[0] or base_coords[2] == deltas[1] or
                             base_coords[1] == deltas[2] or base_coords[3] == deltas[3]))
 
+        logging.info(f"Base on edge: {is_base_on_edge}")
+
         return deltas, is_base_on_edge
     except Exception as e:
         raise e
@@ -146,6 +181,7 @@ def read_resource_values(region_of_interest, reader):
 
     try:
         result = reader.readtext(np.array(region_of_interest), detail=0)
+        logging.info(f"-----OCR result: {result}----")  # TODO: delete
         return ''.join(filter(str.isdigit, ''.join(result)))
     except Exception as e:
         raise e
@@ -170,12 +206,16 @@ def get_gold_and_minerals(screenshot, window_data):
     """
     try:
         screenshot_np = np.array(screenshot.convert('L'))
+
         region_of_interest = extract_region_of_interest(screenshot_np, window_data)
+        # save roi
+        cv2.imwrite("roi.png", region_of_interest)  # TODO: delete
+
+        split_regions_of_interest = split_region_of_interest_for_gold_and_mineral_fields(region_of_interest)
 
         with torch.no_grad():
             reader = easyocr.Reader(['en'], gpu=torch.cuda.is_available())
 
-        split_regions_of_interest = split_region_of_interest_for_gold_and_mineral_fields(region_of_interest)
         gold_value = read_resource_values(split_regions_of_interest[0], reader)
         mineral_value = read_resource_values(split_regions_of_interest[1], reader)
 
@@ -205,19 +245,26 @@ def extract_region_of_interest(image, window_data):
         raise e
 
 
-def split_region_of_interest_for_gold_and_mineral_fields(region_of_interest):
+def split_region_of_interest_for_gold_and_mineral_fields(region_of_interest, split_axis):
     """
-    Splits a region of interest into two parts for gold and mineral fields.
+    Splits a region of interest into two parts based on the specified axis.
 
     Params:
-        region_of_interest (numpy.ndarray): The region of interest to split
+        region_of_interest (numpy.ndarray): The region of interest to split.
+        split_axis (str): The axis to split on ('horizontal' or 'vertical').
 
     Returns:
-        tuple: Two numpy arrays (numpy.ndarray) representing the split regions
+        tuple: Two numpy arrays representing the split regions.
     """
     try:
-        mid_index = region_of_interest.shape[0] // 2
-        return region_of_interest[:mid_index, :], region_of_interest[mid_index:, :]
+        if split_axis == 'horizontal':
+            mid_index = region_of_interest.shape[0] // 2
+            return region_of_interest[:mid_index, :], region_of_interest[mid_index:, :]
+        elif split_axis == 'vertical':
+            mid_index = region_of_interest.shape[1] // 2
+            return region_of_interest[:, :mid_index], region_of_interest[:, mid_index:]
+        else:
+            raise ValueError("Invalid split_axis. Use 'horizontal' or 'vertical'.")
     except Exception as e:
         raise e
 
@@ -251,7 +298,7 @@ def process_screenshot(init_time):
     Processes a screenshot to extract gold and mineral values. Saves bot's uptime to a file.
 
     Params:
-        init_time (TODO)
+        init_time (datetime): The bot's initialization time
 
     Returns:
         gold_value (str): gold value
@@ -273,9 +320,9 @@ def process_screenshot(init_time):
 
             gold_value, mineral_value = get_gold_and_minerals(screenshot, SCAN_WINDOW_DATA)
 
+            logging.info(f"Uptime: {uptime}")
             logging.info(f"Gold Value: {gold_value}")
             logging.info(f"Mineral Value: {mineral_value}")
-            logging.info(f"Uptime: {uptime}")
 
             return gold_value, mineral_value, screen_path, uptime
 
@@ -296,14 +343,18 @@ def is_worth_attacking(gold_value, mineral_value, screen_path):
     Returns:
         bool: True if the base is worth attacking based on current settings, False otherwise
     """
-    gold_value_threshold = 0
-    mineral_value_threshold = 0
+    gold_value_threshold = 500000
+    mineral_value_threshold = 1000000
 
     try:
-        logging.info(f"Is worth attacking based on resources: {int(mineral_value) > mineral_value_threshold}")
-        result = is_worth_based_on_defences(screen_path)  # and int(mineral_value) > 800000
+        threshold_result = int(gold_value) > gold_value_threshold and int(mineral_value) > mineral_value_threshold
+        logging.info(f"Is worth attacking based on resources: {threshold_result}")
+        if threshold_result:
+            result = is_worth_based_on_defences(screen_path) and threshold_result
+        else:
+            result = False
+
         logging.info(f"Is worth attacking: {result}")
-        logging.info("---------------------------ended calculating, proceeds to next enemy---------------------------")
 
         return result
     except Exception as e:
