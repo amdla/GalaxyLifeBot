@@ -1,0 +1,13 @@
+path: ../
+train: training/
+val: training/
+
+names:
+    0: None
+    1: Air
+    2: Mortar
+    3: Cannon
+    4: Sniper
+    5: Bunker
+    6: Laser
+    7: Base
