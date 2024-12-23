@@ -181,43 +181,40 @@ def read_resource_values(region_of_interest, reader):
 
     try:
         result = reader.readtext(np.array(region_of_interest), detail=0)
-        logging.info(f"-----OCR result: {result}----")  # TODO: delete
         return ''.join(filter(str.isdigit, ''.join(result)))
     except Exception as e:
         raise e
 
 
-def get_gold_and_minerals(screenshot, window_data):
+def get_gold_and_minerals(screenshot, window_data, screenshot_type='normal'):
     """
     Extracts gold and mineral values from a screenshot.
 
     Params:
-        screenshot: The screenshot image
-        window_data (tuple): A tuple containing the window data consisting of:
-        - x (int): X-coordinate of the top-left corner
-        - y (int): Y-coordinate of the top-left corner
-        - width (int): Width of the region
-        - height (int): Height of the region
+        screenshot: The screenshot image.
+        screenshot_type (str): Type of screenshot ('normal' or 'battle').
 
     Returns:
         tuple(gold_value, mineral_value) containing:
-            gold_value (str): The extracted gold value
-            mineral_value (str): The extracted mineral value
+        - gold_value (str): The extracted gold value.
+        - mineral_value (str): The extracted mineral value.
     """
     try:
         screenshot_np = np.array(screenshot.convert('L'))
-
         region_of_interest = extract_region_of_interest(screenshot_np, window_data)
-        # save roi
-        cv2.imwrite("roi.png", region_of_interest)  # TODO: delete
 
-        split_regions_of_interest = split_region_of_interest_for_gold_and_mineral_fields(region_of_interest)
+        split_axis = 'horizontal' if screenshot_type == 'normal' else 'vertical'
 
         with torch.no_grad():
             reader = easyocr.Reader(['en'], gpu=torch.cuda.is_available())
 
+        split_regions_of_interest = split_region_of_interest(region_of_interest, split_axis)
+
         gold_value = read_resource_values(split_regions_of_interest[0], reader)
         mineral_value = read_resource_values(split_regions_of_interest[1], reader)
+
+        logging.info(f"Gold value: {gold_value}")
+        logging.info(f"Mineral value: {mineral_value}")
 
         return gold_value, mineral_value
     except Exception as e:
@@ -245,7 +242,7 @@ def extract_region_of_interest(image, window_data):
         raise e
 
 
-def split_region_of_interest_for_gold_and_mineral_fields(region_of_interest, split_axis):
+def split_region_of_interest(region_of_interest, split_axis):
     """
     Splits a region of interest into two parts based on the specified axis.
 
@@ -256,6 +253,7 @@ def split_region_of_interest_for_gold_and_mineral_fields(region_of_interest, spl
     Returns:
         tuple: Two numpy arrays representing the split regions.
     """
+
     try:
         if split_axis == 'horizontal':
             mid_index = region_of_interest.shape[0] // 2
