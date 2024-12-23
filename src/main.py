@@ -30,7 +30,7 @@ def main_loop():
                 if is_worth_attacking(gold_value, mineral_value, screen_path):
                     end_battle_screenshot = attack()
                     loot_gold_value, loot_mineral_value = get_gold_and_minerals(end_battle_screenshot,
-                                                                                ATTACK_WINDOW_DATA)
+                                                                                ATTACK_WINDOW_DATA, "battle")
 
                     excel_logger.log_to_excel(gold_value, mineral_value, True, uptime, loot_gold_value,
                                               loot_mineral_value)

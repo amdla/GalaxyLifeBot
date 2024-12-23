@@ -1,0 +1,8 @@
+openpyxl
+pyautogui
+pygetwindow
+ultralytics
+torch
+cv2
+easyocr
+numpy
