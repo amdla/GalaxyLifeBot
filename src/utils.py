@@ -4,28 +4,7 @@ import shutil
 import time
 
 import pyautogui
-from openpyxl import Workbook, load_workbook
-
-from src.image_processing import get_screenshot
-
-
-def clear_screenshots_directory():
-    """
-    Clears the screenshots directory by removing all files and recreating the directory.
-    """
-
-    directory = '../logs/screenshots'
-
-    if os.path.exists(directory):
-        shutil.rmtree(directory)
-        os.makedirs(directory)
-        with open(os.path.join(directory, '.gitkeep'), 'w'):
-            pass
-
-        logging.info(f"Directory '{directory}' has been cleared.")
-    else:
-        logging.info(f"Directory '{directory}' does not exist.")
-
+from pygetwindow import getWindowsWithTitle
 
 # Define button coordinates as constants
 ATTACK_BUTTON = (935, 1365)
@@ -44,6 +23,80 @@ ADD_LOOTERS_TO_TRAINING_LIST_BUTTON = (1070, 1420)
 CHOOSE_LOOTER_UNIT_WHEN_ATTACKING_BUTTON = (950, 1375)
 CLOSE_NEWS_POPUP_BUTTON = (1583, 204)
 CLOSE_DAILY_GIFT_POPUP_BUTTON = (1590, 530)
+DEFENSIVE_BUILDINGS_THRESHOLD = 3
+GOLD_VALUE_THRESHOLD = 2137
+MINERAL_VALUE_THRESHOLD = 2137
+
+SCAN_WINDOW_DATA = [985, 100, 65, 50]
+ATTACK_WINDOW_DATA = [1000, 855, 280, 45]
+
+
+class IterationData:
+    def __init__(self, uptime, iteration):
+        self.uptime = uptime
+        self.iteration = iteration
+        self.detected_defensive_buildings = None
+        self.opponent_gold_value = None
+        self.opponent_mineral_value = None
+        self.loot_gold_value = None
+        self.loot_mineral_value = None
+        self.is_base_on_edge = None
+        self.is_worth_resources = None
+        self.is_worth_defensive_buildings = None
+        self.is_worth_total = None
+
+    def set_opponent_values(self, opponent_gold_value, opponent_mineral_value):
+        self.opponent_gold_value = int(opponent_gold_value)
+        self.opponent_mineral_value = int(opponent_mineral_value)
+        self.is_worth_resources = (int(opponent_gold_value) > GOLD_VALUE_THRESHOLD
+                                   and int(opponent_mineral_value) > MINERAL_VALUE_THRESHOLD)
+
+    def set_looted_values(self, loot_gold_value, loot_mineral_value):
+        self.loot_gold_value = int(loot_gold_value)
+        self.loot_mineral_value = int(loot_mineral_value)
+
+    def set_defence_detections(self, amount_of_defensive_buildings, is_base_on_edge, worth_based_on_defence_result):
+        self.detected_defensive_buildings = amount_of_defensive_buildings
+        self.is_base_on_edge = is_base_on_edge
+        self.is_worth_defensive_buildings = worth_based_on_defence_result
+        self.is_worth_total = self.is_worth_resources and self.is_worth_defensive_buildings
+
+    def print_all_data(self, logger):
+        logger.info("--------------------------------------TEST FROM DATA CLASS--------------------------------------")
+        logger.info("--------------------------------------TEST FROM DATA CLASS--------------------------------------")
+        logger.info("--------------------------------------TEST FROM DATA CLASS--------------------------------------")
+        logger.info(f"Iteration: {self.iteration}")
+        logger.info(f"Uptime: {self.uptime}")
+        logger.info(f"Detected defensive buildings: {self.detected_defensive_buildings}")
+        logger.info(f"Opponent gold value: {self.opponent_gold_value}")
+        logger.info(f"Opponent mineral value: {self.opponent_mineral_value}")
+        logger.info(f"Looted gold value: {self.loot_gold_value}")
+        logger.info(f"Looted mineral value: {self.loot_mineral_value}")
+        logger.info(f"Is worth resources: {self.is_worth_resources}")
+        logger.info(f"Is base on edge: {self.is_base_on_edge}")
+        logger.info(f"Is worth defensive buildings: {self.is_worth_defensive_buildings}")
+        logger.info(f"Is worth total: {self.is_worth_total}")
+        logger.info("------------------------------------END TEST FROM DATA CLASS------------------------------------")
+        logger.info("------------------------------------END TEST FROM DATA CLASS------------------------------------")
+        logger.info("------------------------------------END TEST FROM DATA CLASS------------------------------------")
+
+
+def clear_screenshots_directory():
+    """
+    Clears the screenshots directory by removing all files and recreating the directory.
+    """
+
+    directory = '../logs/screenshots'
+
+    if os.path.exists(directory):
+        shutil.rmtree(directory)
+        os.makedirs(directory)
+        with open(os.path.join(directory, '.gitkeep'), 'w'):
+            pass
+
+        logging.info(f"Directory '{directory}' has been cleared.")
+    else:
+        logging.info(f"Directory '{directory}' does not exist.")
 
 
 def click_and_wait(button, time_to_wait):
@@ -77,7 +130,8 @@ def handle_error():
     """
 
     get_screenshot("Galaxy Life")  # take focus on window
-    logging.warning("---------------------------------Handling error with F5 refresh---------------------------------")
+    logging.warning(
+        "---------------------------------Handling error with F5 refresh---------------------------------")
     pyautogui.keyDown('F5')
     time.sleep(0.2)
     pyautogui.keyUp('F5')
@@ -88,49 +142,28 @@ def handle_error():
     get_initial_base()
 
 
-class ExcelLogger:
-    def __init__(self, init_time):
-        self.init_time = init_time
-        self.workbook = None
-        self.sheet = None
-        self.filename = None
-        self.init_excel_logging()
+def get_screenshot(window_title):
+    """
+    Captures a screenshot of a specified window.
 
-    def init_excel_logging(self):
-        """
-        Initializes the Excel workbook for logging.
-        """
-        init_time_formatted = self.init_time.strftime("%Y%m%d_%H%M%S")
-        self.filename = f"../logs/excel/{init_time_formatted}-log.xlsx"
+    Params:
+        window_title (str): The title of the window to capture
 
-        if os.path.exists(self.filename):
-            self.workbook = load_workbook(self.filename)
-            self.sheet = self.workbook.active
-        else:
-            self.workbook = Workbook()
-            self.sheet = self.workbook.active
-            headers = ["Gold Value", "Mineral Value", "Is Worth Attacking", "Uptime", "Looted Gold", "Looted Minerals",
-                       "Gold efficiency", "Mineral efficiency"]
-            for col, header in enumerate(headers, start=1):
-                self.sheet.cell(row=1, column=col, value=header)
-
-        self.workbook.save(self.filename)
-
-    def log_to_excel(self, gold_value, mineral_value, is_worth, uptime, loot_gold_value, loot_mineral_value):
-        """
-        Logs data to the Excel spreadsheet.
-
-        Params:
-            gold_value (str): The gold value
-            mineral_value (str): The mineral value
-            is_worth (bool): True if the base is worth attacking, False otherwise
-            uptime (timedelta): The bot's uptime
-            loot_gold_value (str): Amount of looted gold
-            loot_mineral_value (str): Amount of looted minerals
-        """
-        new_row = [gold_value, mineral_value, is_worth, uptime, loot_gold_value, loot_mineral_value]
-        self.sheet.append(new_row)
-        self.workbook.save(self.filename)
+    Returns:
+        Image: The captured screenshot
+    """
+    try:
+        window = getWindowsWithTitle(window_title)[0]
+        window.activate()
+        time.sleep(0.25)
+        window.maximize()
+        time.sleep(0.25)
+        window.moveTo(0, 0)
+        time.sleep(0.25)
+    except IndexError:
+        logging.error("Window not found!")
+        exit()
+    return pyautogui.screenshot()
 
 
 # TODO: list below
