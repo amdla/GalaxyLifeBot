@@ -157,7 +157,6 @@ cython_debug/
 .idea/*
 
 logs/screenshots/*
-logs/excel/*
 
 src/macro/__pycache__/*
 src/__pycache__/*

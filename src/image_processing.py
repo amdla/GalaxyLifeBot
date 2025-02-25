@@ -1,17 +1,15 @@
 import logging
-import time
 from datetime import datetime
 
 import cv2
 import easyocr
 import numpy as np
-import pyautogui
 import torch
-from pygetwindow import getWindowsWithTitle
 from ultralytics import YOLO
 
-SCAN_WINDOW_DATA = [985, 100, 65, 50]
-ATTACK_WINDOW_DATA = [1000, 855, 280, 45]
+from const_values import DEFENSIVE_BUILDINGS_THRESHOLD, GOLD_VALUE_THRESHOLD, MINERAL_VALUE_THRESHOLD, \
+    SCAN_WINDOW_DATA, ATTACK_WINDOW_DATA
+from utils import get_screenshot
 
 
 def save_detection_results(screen_path, results):
@@ -47,7 +45,7 @@ def save_detection_results(screen_path, results):
         raise e
 
 
-def is_worth_based_on_defences(screen_path):
+def is_worth_based_on_defences(screen_path, iteration_data):
     """
     Determines if a base is worth attacking based on defenses recognized by model.
 
@@ -56,10 +54,9 @@ def is_worth_based_on_defences(screen_path):
 
     Returns:
         bool: True if the base is located on the edge of all defensive buildings OR amount of defensive
-            buildings is smaller than <defensive_buildings_amount_threshold> (we assume that the base is not protected
+            buildings is smaller than <defensive_buildings_threshold> (we assume that the base is not protected
             well then), False otherwise
     """
-    defensive_buildings_amount_threshold = 5
     try:
         image = cv2.imread(screen_path)
         if image is None:
@@ -85,9 +82,12 @@ def is_worth_based_on_defences(screen_path):
             is_base_on_edge = False
 
         # Worth attacking if base is on edge or defensive buildings amount is smaller than set threshold
-        result = len(results.boxes.data) < defensive_buildings_amount_threshold or is_base_on_edge
-        logging.info(f"Is worth attacking based on defences: {result}")
-        return result
+        amount_of_defensive_buildings = len(results.boxes.data)
+        worth_based_on_defence_result = amount_of_defensive_buildings < DEFENSIVE_BUILDINGS_THRESHOLD or is_base_on_edge
+        logging.info(f"Is worth attacking based on defences: {worth_based_on_defence_result}")
+        iteration_data.set_defence_detections(amount_of_defensive_buildings, is_base_on_edge,
+                                              worth_based_on_defence_result)
+        return worth_based_on_defence_result
     except Exception as e:
         raise e
 
@@ -186,7 +186,7 @@ def read_resource_values(region_of_interest, reader):
         raise e
 
 
-def get_gold_and_minerals(screenshot, window_data, screenshot_type='normal'):
+def get_gold_and_minerals(screenshot, screenshot_type='normal'):
     """
     Extracts gold and mineral values from a screenshot.
 
@@ -201,6 +201,11 @@ def get_gold_and_minerals(screenshot, window_data, screenshot_type='normal'):
     """
     try:
         screenshot_np = np.array(screenshot.convert('L'))
+        if screenshot_type == 'battle':
+            window_data = ATTACK_WINDOW_DATA
+        else:
+            window_data = SCAN_WINDOW_DATA
+
         region_of_interest = extract_region_of_interest(screenshot_np, window_data)
 
         split_axis = 'horizontal' if screenshot_type == 'normal' else 'vertical'
@@ -213,8 +218,12 @@ def get_gold_and_minerals(screenshot, window_data, screenshot_type='normal'):
         gold_value = read_resource_values(split_regions_of_interest[0], reader)
         mineral_value = read_resource_values(split_regions_of_interest[1], reader)
 
-        logging.info(f"Gold value: {gold_value}")
-        logging.info(f"Mineral value: {mineral_value}")
+        if screenshot_type == 'battle':
+            logging.info(f"Loot Gold value: {gold_value}")
+            logging.info(f"Loot Mineral value: {mineral_value}")
+        else:
+            logging.info(f"Opponent gold value: {gold_value}")
+            logging.info(f"Opponent mineral value: {mineral_value}")
 
         return gold_value, mineral_value
     except Exception as e:
@@ -267,31 +276,7 @@ def split_region_of_interest(region_of_interest, split_axis):
         raise e
 
 
-def get_screenshot(window_title):
-    """
-    Captures a screenshot of a specified window.
-
-    Params:
-        window_title (str): The title of the window to capture
-
-    Returns:
-        Image: The captured screenshot
-    """
-    try:
-        window = getWindowsWithTitle(window_title)[0]
-        window.activate()
-        time.sleep(0.25)
-        window.maximize()
-        time.sleep(0.25)
-        window.moveTo(0, 0)
-        time.sleep(0.25)
-    except IndexError:
-        logging.error("Window not found!")
-        exit()
-    return pyautogui.screenshot()
-
-
-def process_screenshot(init_time):
+def process_screenshot():
     """
     Processes a screenshot to extract gold and mineral values. Saves bot's uptime to a file.
 
@@ -310,25 +295,23 @@ def process_screenshot(init_time):
 
         if screenshot:
             now = datetime.now()
-            uptime = now - init_time
 
             timestamp = now.strftime("%Y%m%d_%H%M%S")
             screen_path = f"../logs/screenshots/{timestamp}.png"
             screenshot.save(screen_path)
 
-            gold_value, mineral_value = get_gold_and_minerals(screenshot, SCAN_WINDOW_DATA)
+            gold_value, mineral_value = get_gold_and_minerals(screenshot, 'normal')
 
-            logging.info(f"Uptime: {uptime}")
             logging.info(f"Gold Value: {gold_value}")
             logging.info(f"Mineral Value: {mineral_value}")
 
-            return gold_value, mineral_value, screen_path, uptime
+            return gold_value, mineral_value, screen_path
 
     except Exception as e:
         raise e
 
 
-def is_worth_attacking(gold_value, mineral_value, screen_path):
+def is_worth_attacking(gold_value, mineral_value, screen_path, iteration_data):
     """
     Determines if a base is worth attacking based on resources and defences. Thresholds for mineral and gold values
     making the function return true are set as <gold_value_threshold> and <mineral_value_threshold>
@@ -341,14 +324,12 @@ def is_worth_attacking(gold_value, mineral_value, screen_path):
     Returns:
         bool: True if the base is worth attacking based on current settings, False otherwise
     """
-    gold_value_threshold = 500000
-    mineral_value_threshold = 1000000
 
     try:
-        threshold_result = int(gold_value) > gold_value_threshold and int(mineral_value) > mineral_value_threshold
+        threshold_result = int(gold_value) > GOLD_VALUE_THRESHOLD and int(mineral_value) > MINERAL_VALUE_THRESHOLD
         logging.info(f"Is worth attacking based on resources: {threshold_result}")
         if threshold_result:
-            result = is_worth_based_on_defences(screen_path) and threshold_result
+            result = is_worth_based_on_defences(screen_path, iteration_data) and threshold_result
         else:
             result = False
 
