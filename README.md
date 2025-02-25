@@ -100,4 +100,3 @@ which coordinates all actions:
 - EasyOCR
 - PyTorch
 - YOLO (You Only Look Once) for object detection
-- Openpyxl for Excel operations

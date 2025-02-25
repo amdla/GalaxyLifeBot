@@ -7,8 +7,9 @@ import numpy as np
 import torch
 from ultralytics import YOLO
 
-from utils import DEFENSIVE_BUILDINGS_THRESHOLD, GOLD_VALUE_THRESHOLD, MINERAL_VALUE_THRESHOLD, SCAN_WINDOW_DATA, \
-    ATTACK_WINDOW_DATA, get_screenshot
+from const_values import DEFENSIVE_BUILDINGS_THRESHOLD, GOLD_VALUE_THRESHOLD, MINERAL_VALUE_THRESHOLD, \
+    SCAN_WINDOW_DATA, ATTACK_WINDOW_DATA
+from utils import get_screenshot
 
 
 def save_detection_results(screen_path, results):

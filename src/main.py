@@ -1,10 +1,10 @@
 import logging
 from datetime import datetime
 
+from const_values import SEARCH_AGAIN_BUTTON
 from game_actions import search_for_enemy, attack, add_troops_to_training
 from image_processing import process_screenshot, is_worth_attacking, get_gold_and_minerals
-from utils import clear_screenshots_directory, click_and_wait, handle_error, SEARCH_AGAIN_BUTTON, \
-    IterationData, get_screenshot
+from utils import clear_screenshots_directory, click_and_wait, handle_error, IterationData, get_screenshot
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
