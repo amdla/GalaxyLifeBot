@@ -10,10 +10,9 @@ from src.const_values import OPEN_PLANETS_LIST_BUTTON, COLONY_11_BUTTON, CLOSE_N
     CLOSE_DAILY_GIFT_POPUP_BUTTON, GOLD_VALUE_THRESHOLD, MINERAL_VALUE_THRESHOLD
 
 
-# TODO: class docstring
 class IterationData:
     """
-
+    Class that stores data for each iteration of the bot.
     """
 
     def __init__(self, uptime, iteration):
@@ -46,6 +45,12 @@ class IterationData:
         self.is_worth_total = self.is_worth_resources and self.is_worth_defensive_buildings
 
     def print_all_data(self, logger):
+        """
+        Prints all data stored in the class to the console.
+
+        Params:
+            logger (Logger): The logger used for printing.
+        """
         logger.info("--------------------------------------TEST FROM DATA CLASS--------------------------------------")
         logger.info("--------------------------------------TEST FROM DATA CLASS--------------------------------------")
         logger.info("--------------------------------------TEST FROM DATA CLASS--------------------------------------")

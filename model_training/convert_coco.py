@@ -7,8 +7,8 @@ def convert_coco_to_yolo(coco_json_path, output_dir):
     Converts COCO annotations to YOLO format.
 
     Parameters:
-    coco_json_path (str): Path to the COCO JSON file.
-    output_dir (str): Directory to save YOLO formatted labels.
+        coco_json_path (str): Path to the COCO JSON file.
+        output_dir (str): Directory to save YOLO formatted labels.
     """
     with open(coco_json_path) as f:
         data = json.load(f)
@@ -40,6 +40,6 @@ def convert_coco_to_yolo(coco_json_path, output_dir):
 
 
 if __name__ == "__main__":
-    coco_json_path = '../../instances_default.json'
-    output_dir = 'C:/Users/macie/PycharmProjects/GalaxyLifeBot/src/training/labels'
+    coco_json_path = './instances_default.json'
+    output_dir = './labels'
     convert_coco_to_yolo(coco_json_path, output_dir)

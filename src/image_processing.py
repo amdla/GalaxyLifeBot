@@ -51,11 +51,11 @@ def is_worth_based_on_defences(screen_path, iteration_data):
 
     Params:
         screen_path (str): Path to the screenshot image
+        iteration_data (IterationData): An object to store iteration data
 
     Returns:
         bool: True if the base is located on the edge of all defensive buildings OR amount of defensive
-            buildings is smaller than <defensive_buildings_threshold> (we assume that the base is not protected
-            well then), False otherwise
+            buildings is smaller than `DEFENSIVE BUILDINGS THRESHOLD` (we assume that the base is not protected well then), False otherwise
     """
     try:
         image = cv2.imread(screen_path)
@@ -81,7 +81,8 @@ def is_worth_based_on_defences(screen_path, iteration_data):
             logging.error("Base not found in detections.")
             is_base_on_edge = False
 
-        # Worth attacking if base is on edge or defensive buildings amount is smaller than set threshold
+        # Worth attacking if base is on edge or defensive buildings amount is smaller than
+        # `DEFENSIVE_BUILDINGS_THRESHOLD`
         amount_of_defensive_buildings = len(results.boxes.data)
         worth_based_on_defence_result = amount_of_defensive_buildings < DEFENSIVE_BUILDINGS_THRESHOLD or is_base_on_edge
         logging.info(f"Is worth attacking based on defences: {worth_based_on_defence_result}")
@@ -186,12 +187,12 @@ def read_resource_values(region_of_interest, reader):
         raise e
 
 
-def get_gold_and_minerals(screenshot, screenshot_type='normal'):
+def get_gold_and_minerals(screenshot, screenshot_type):
     """
     Extracts gold and mineral values from a screenshot.
 
     Params:
-        screenshot: The screenshot image.
+        screenshot (image): The screenshot image.
         screenshot_type (str): Type of screenshot ('normal' or 'battle').
 
     Returns:
@@ -208,6 +209,7 @@ def get_gold_and_minerals(screenshot, screenshot_type='normal'):
 
         region_of_interest = extract_region_of_interest(screenshot_np, window_data)
 
+        # split te ROI into two parts based on the screenshot type
         split_axis = 'horizontal' if screenshot_type == 'normal' else 'vertical'
 
         with torch.no_grad():
@@ -278,16 +280,12 @@ def split_region_of_interest(region_of_interest, split_axis):
 
 def process_screenshot():
     """
-    Processes a screenshot to extract gold and mineral values. Saves bot's uptime to a file.
-
-    Params:
-        init_time (datetime): The bot's initialization time
+    Processes a screenshot to extract gold and mineral values.
 
     Returns:
         gold_value (str): gold value
         mineral_value (str): mineral value
         screen_path (str): path to the saved screenshot
-        uptime (timedelta): bot's uptime
     """
     try:
         window_title = "Galaxy Life"
@@ -313,8 +311,7 @@ def process_screenshot():
 
 def is_worth_attacking(gold_value, mineral_value, screen_path, iteration_data):
     """
-    Determines if a base is worth attacking based on resources and defences. Thresholds for mineral and gold values
-    making the function return true are set as <gold_value_threshold> and <mineral_value_threshold>
+    Determines if a base is worth attacking based on resources and defences.
 
     Params:
         gold_value (str): gold value
@@ -322,7 +319,7 @@ def is_worth_attacking(gold_value, mineral_value, screen_path, iteration_data):
         screen_path (str): Path to the screenshot image
 
     Returns:
-        bool: True if the base is worth attacking based on current settings, False otherwise
+        bool: True if the base is worth attacking based on current thresholds, False otherwise
     """
 
     try:

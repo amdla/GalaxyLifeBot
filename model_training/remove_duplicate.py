@@ -2,6 +2,12 @@ import os
 
 
 def remove_duplicate_labels(label_dir):
+    """
+    Removes duplicate lines from all .txt files in the given directory.
+
+    Params:
+        label_dir (str): The directory containing the .txt files.
+    """
     for filename in os.listdir(label_dir):
         if filename.endswith(".txt"):
             filepath = os.path.join(label_dir, filename)
